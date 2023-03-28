@@ -4,6 +4,8 @@ import com.example.MovieCatalogService.models.AllRatings;
 import com.example.MovieCatalogService.models.Catalog;
 import com.example.MovieCatalogService.models.Movie;
 import com.example.MovieCatalogService.models.RatingResponse;
+import com.example.MovieCatalogService.services.MovieInfo;
+import com.example.MovieCatalogService.services.RatingService;
 import org.apache.tomcat.util.bcel.Const;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,42 +30,25 @@ public class CatalogController {
 
     private static final String BASE_URL = "http://movie-rating-service" ;
     private final WebClient.Builder webClientBuilder;
-
+    private final MovieInfo movieInfo;
+    private final RatingService ratingService;
     @Autowired
-    public CatalogController(WebClient.Builder webClientBuilder) {
+    public CatalogController(WebClient.Builder webClientBuilder, MovieInfo movieInfo, RatingService ratingService) {
         this.webClientBuilder = webClientBuilder;
+        this.movieInfo = movieInfo;
+        this.ratingService = ratingService;
     }
+
+
 
 
     @GetMapping
     public List<Catalog> getCatalogs(@RequestParam String userId)
     {
-        List<Integer> lt = new ArrayList<>();
-        lt.add(1);
-        lt.add(2);
-        lt.add(3);
 
-        DefaultUriBuilderFactory factory = new DefaultUriBuilderFactory(BASE_URL);
-        factory.setEncodingMode(DefaultUriBuilderFactory.EncodingMode.URI_COMPONENT);
-        WebClient webClient = webClientBuilder
-                .uriBuilderFactory(factory)
-                .baseUrl(BASE_URL)
-                .build();
-        AllRatings allRatings = webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                             .path("/rating/12")
-                            .queryParam("list",lt)
-                            .build()
-                )
-                .retrieve()
-                .bodyToMono(AllRatings.class)
-                .block();
-        List<Catalog> catalogList = allRatings.getRatingResponseList().stream().map((x)->{
-            Movie movie = webClientBuilder.build().get()
-                    .uri("http://movie-info-service/info/"+x.getMovieId())
-                    .retrieve()
-                    .bodyToMono(Movie.class)
-                    .block();
+        List<Catalog> catalogList = this.ratingService.getAllRatings().getRatingResponseList().stream().map((x)->{
+            System.out.println(x.getMovieId());
+            Movie movie =this.movieInfo.getMovie(x.getMovieId());
             return new Catalog(x.getMovieId(),movie.getOriginal_title(),movie.getOverview(),x.getRating());
         }).collect(Collectors.toList());
         System.out.println("Entered the Next rating service...");
